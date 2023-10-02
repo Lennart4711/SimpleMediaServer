@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Movie Server</title>
+</head>
+<body>
+    <h1>Available Movies:</h1>
+    <ul>
+        {% for movie in movies %}
+            <li><a href="{{ url_for('stream_movie', movie_name=movie) }}">{{ movie }}</a></li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
