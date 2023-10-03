@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Add your CSS stylesheets here -->
+</head>
+<body>
+    <video id="player" controls autoplay>
+        <source src="{{ video_file }}" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+    <div id="progress-control-container">
+        <div id="progress">
+            <div id="progress-inner"></div>
+            <div id="progress-hover"></div>
+        </div>
+    </div>
+
+    <div id="controls">
+        <button id="control-play">Play</button>
+        <button id="control-pause">Pause</button>
+    </div>
+
+    <script>
+        var video = document.getElementById('player');
+        var progressBar = document.getElementById('progress');
+        var progressBarInner = document.getElementById('progress-inner');
+
+        // Function to update video progress
+        function updateProgress() {
+            var progress = (video.currentTime / video.duration) * 100;
+            progressBarInner.style.width = progress + '%';
+        }
+
+        // Event listener to update progress bar as video plays
+        video.addEventListener('timeupdate', updateProgress);
+
+        // Event listener to handle seeking when clicking on the progress bar
+        progressBar.addEventListener('click', function (event) {
+            var totalPixels = this.clientWidth;
+            var clickedPixels = event.clientX - this.getBoundingClientRect().left;
+            var progressFactor = clickedPixels / totalPixels;
+            video.currentTime = video.duration * progressFactor;
+        });
+
+        // Event listener to handle seeking when hovering on the progress bar
+        progressBar.addEventListener('mousemove', function (event) {
+            var hoverPixels = event.clientX - this.getBoundingClientRect().left;
+            document.getElementById('progress-hover').style.width = hoverPixels + 'px';
+        });
+
+        // Play button
+        var playButton = document.getElementById('control-play');
+        playButton.addEventListener('click', function () {
+            video.play();
+            playButton.style.display = 'none';
+            pauseButton.style.display = 'inline-block';
+        });
+
+        // Pause button
+        var pauseButton = document.getElementById('control-pause');
+        pauseButton.addEventListener('click', function () {
+            video.pause();
+            pauseButton.style.display = 'none';
+            playButton.style.display = 'inline-block';
+        });
+
+        // Event listener to handle video time updates
+        video.addEventListener('timeupdate', function () {
+            // Update the video's current time
+            var currentTime = secondsToTime(video.currentTime);
+            var duration = secondsToTime(video.duration);
+            console.log('Current Time: ' + currentTime + ' / Duration: ' + duration);
+        });
+
+        // Convert seconds to HH:MM:SS format
+        function secondsToTime(seconds) {
+            var hours = Math.floor(seconds / 3600);
+            var minutes = Math.floor((seconds % 3600) / 60);
+            seconds = Math.floor(seconds % 60);
+
+            if (hours < 10) {
+                hours = '0' + hours;
+            }
+            if (minutes < 10) {
+                minutes = '0' + minutes;
+            }
+            if (seconds < 10) {
+                seconds = '0' + seconds;
+            }
+
+            return hours + ':' + minutes + ':' + seconds;
+        }
+    </script>
+</body>
+</html>

@@ -1,42 +1,77 @@
+from flask import Flask, render_template, request, Response, jsonify
 import os
-from flask import Flask, render_template, send_from_directory, request, Response
+import socket
 
 app = Flask(__name__)
-media_folder = os.path.expanduser("~/Videos")
+
+# Define the path to the directory containing movie folders
+MOVIES_DIR = os.path.expanduser('~/Videos')
+
+# Create a socket server for video streaming
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket.bind(("localhost", 5678))
+server_socket.listen(0)
+
+def find_media_files(movie_folder):
+    video_file = None
+    subtitle_file = None
+
+    for filename in os.listdir(movie_folder):
+        if filename.endswith('.mp4'):
+            video_file = os.path.join(movie_folder, filename)
+        elif filename.endswith('.srt'):
+            subtitle_file = os.path.join(movie_folder, filename)
+
+    return video_file, subtitle_file
 
 @app.route('/')
 def index():
-    movies = os.listdir(media_folder)
+    # List all available movies
+    movies = sorted(os.listdir(MOVIES_DIR))
     return render_template('index.html', movies=movies)
 
 @app.route('/movie/<movie_name>')
-def serve_movie(movie_name):
-    movie_folder = os.path.join(media_folder, movie_name)
-    movie_file = os.path.join(movie_folder, "movie.mp4")
-    return send_from_directory(movie_folder, "movie.mp4")
+def play_movie(movie_name):
+    movie_folder = os.path.join(MOVIES_DIR, movie_name)
+    video_file, subtitle_file = find_media_files(movie_folder)
 
-@app.route('/subtitles/<movie_name>')
-def serve_subtitles(movie_name):
-    movie_folder = os.path.join(media_folder, movie_name)
-    subtitles_file = os.path.join(movie_folder, "subtitles.srt")
-    return send_from_directory(movie_folder, "subtitles.srt")
+    if video_file:
+        return render_template('play_movie.html', movie_name=movie_name, video_file=video_file)
+    else:
+        return "Movie not found."
 
-def generate_movie(movie_path):
-    chunk_size = 1024 * 1024  # 1MB chunks, adjust as needed
-
-    with open(movie_path, 'rb') as video_file:
+def video_generator(video_file, start_time=0):
+    # Function to generate video stream starting from a specific timestamp
+    with open(video_file, 'rb') as f:
+        f.seek(start_time)
+        print(start_time)
         while True:
-            chunk = video_file.read(chunk_size)
-            if not chunk:
+            video_data = f.read(1024)
+            if not video_data:
                 break
-            yield chunk
+            yield video_data
 
-@app.route('/stream_movie/<movie_name>')
-def stream_movie(movie_name):
-    movie_folder = os.path.join(media_folder, movie_name)
-    movie_file = os.path.join(movie_folder, "movie.mp4")
+@app.route('/video/<movie_name>')
+def video_stream(movie_name):
+    movie_folder = os.path.join(MOVIES_DIR, movie_name)
+    video_file, _ = find_media_files(movie_folder)
 
-    return Response(generate_movie(movie_file), mimetype='video/mp4')
+    if video_file:
+        start_time = int(request.args.get('start_time', 0))
+        return Response(video_generator(video_file, start_time), content_type='video/mp4')
+    else:
+        return "Movie not found."
+
+@app.route('/get_video_length/<movie_name>')
+def get_video_length(movie_name):
+    movie_folder = os.path.join(MOVIES_DIR, movie_name)
+    video_file, _ = find_media_files(movie_folder)
+
+    if video_file:
+        video_length = os.path.getsize(video_file)
+        return jsonify({'video_length': video_length})
+    else:
+        return jsonify({'error': 'Movie not found'})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host="localhost", port=5500, debug=True, threaded=True)
